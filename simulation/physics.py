@@ -2,17 +2,16 @@ import numpy as np
 from simulation.constants import G
 
 def compute_accelerations(positions, masses):
-    n = len(masses)
-    acc = np.zeros_like(positions)
+    diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
 
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
+    dist_sq = np.sum(diff**2, axis=-1)
+    dist_sq += np.eye(len(masses)) * 1e9
 
-            r_vec = positions[j] - positions[i]
-            r = np.linalg.norm(r_vec) + 1e-9
+    dist_cube = dist_sq**1.5
 
-            acc[i] += G * masses[j] * r_vec / (r**3)
+    acc = -G * np.sum(
+        masses[np.newaxis, :, np.newaxis] * diff / dist_cube[:, :, np.newaxis],
+        axis=1
+    )
 
     return acc
