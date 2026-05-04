@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data
+data/
+*.npy
+*.npz
+
+# macOS
+.DS_Store
