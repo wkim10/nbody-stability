@@ -8,7 +8,7 @@ def run_simulation(
     velocities,
     masses,
     dt=0.01,
-    T=50000
+    T=5000
 ):
     system = NBodySystem(positions, velocities, masses)
 

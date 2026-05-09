@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from tqdm import tqdm
+from multiprocessing import Pool
 
 from generate_run import run_simulation
 from simulation.constants import G
@@ -8,12 +9,11 @@ from simulation.constants import G
 os.makedirs("data/dataset", exist_ok=True)
 np.random.seed(42)
 
-N_SAMPLES = 1000
+N_SAMPLES = 2000
 
-STABLE_NOISE = (0.95, 1.05)
-UNSTABLE_NOISE = (0.5, 1.5)
+NOISE = (0.5, 1.5)
 
-def sample_planet(M, noise_range):
+def sample_planet(M):
     # choose random point in polar coordinates (ring between radius 0.5 and 2)
     r = np.random.uniform(0.5, 2.0)
     theta = np.random.uniform(0, 2 * np.pi)
@@ -36,19 +36,19 @@ def sample_planet(M, noise_range):
 
     # apply correct speed to the perpendicular direction
     # adds noise to create a mix of stability and instability
-    vel = direction * v_mag * np.random.uniform(*noise_range)
+    vel = direction * v_mag * np.random.uniform(*NOISE)
 
     return pos.tolist(), vel.tolist()
 
-def sample_system(noise_range):
+def sample_system():
     masses = [100, 1, 1]
     M = masses[0]
 
-    pos1, vel1 = sample_planet(M, noise_range)
+    pos1, vel1 = sample_planet(M)
 
     # create second planet that is further than 0.2 away
     while True:
-        pos2, vel2 = sample_planet(M, noise_range)
+        pos2, vel2 = sample_planet(M)
         if np.linalg.norm(np.array(pos1) - np.array(pos2)) > 0.2:
             break
 
@@ -57,16 +57,9 @@ def sample_system(noise_range):
 
     return positions, velocities, masses
 
-configs = (
-    [(STABLE_NOISE, i) for i in range(N_SAMPLES // 2)] +
-    [(UNSTABLE_NOISE, i + N_SAMPLES // 2) for i in range(N_SAMPLES // 2)]
-)
-
-for noise_range, i in tqdm(configs):
-    positions, velocities, masses = sample_system(noise_range)
-
+def run_one(i):
+    positions, velocities, masses = sample_system()
     traj = run_simulation(positions, velocities, masses)
-
     np.savez(
         f"data/dataset/run_{i:03d}.npz",
         trajectory=traj,
@@ -75,4 +68,10 @@ for noise_range, i in tqdm(configs):
         masses=np.array(masses)
     )
 
-print("Done:", N_SAMPLES)
+configs = list(range(N_SAMPLES))
+
+if __name__ == "__main__":
+    with Pool(processes=os.cpu_count()) as pool:
+        list(tqdm(pool.imap(run_one, configs), total=len(configs)))
+    
+    print("Done: ", N_SAMPLES)

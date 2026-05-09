@@ -1,13 +1,17 @@
 import numpy as np
 import os
+from simulation.constants import G
 
 DATA_DIR = "data/dataset"
 
-def compute_features(positions, velocities):
+def compute_features(positions, velocities, masses):
     star_pos = np.array(positions[0])
+    M = masses[0]
 
     # will store features for all planets in a flattened vector
     features = []
+
+    planet_rel_positions = []
 
     for i in range(1, len(positions)):
         # current planet position and velocity
@@ -23,17 +27,22 @@ def compute_features(positions, velocities):
         # speed magnitude of the planet
         v = np.linalg.norm(vel)
 
-        # alignment between position vector and velocity vector:
-        #   +1 -> moving directly away from star (escaping)
-        #    0 -> moving perpendicular (ideal circular orbit direction)
-        #   -1 -> moving directly toward star
-        if r == 0 or v == 0:
-            alignment = 0.0
-        else:
-            alignment = np.dot(rel_pos, vel) / (r * v)
+        # circular orbit speed at this distance
+        v_circ = np.sqrt(G * M / r)
+
+        # ratio of actual speed to circular orbit speed
+        # 1.0 = perfect circular orbit, >1 = too fast, <1 = too slow
+        v_ratio = v / v_circ
         
-        # add features for this planet -> [distance from star, speed, motion-direction alignment]
-        features.extend([r, v, alignment])
+        # add features for this planet -> [distance from star, speed, velocity ratio]
+        features.extend([r, v, v_ratio])
+        planet_rel_positions.append(rel_pos)
+    
+    # inter-planet separation
+    for i in range(len(planet_rel_positions)):
+        for j in range(i + 1, len(planet_rel_positions)):
+            sep = np.linalg.norm(planet_rel_positions[i] - planet_rel_positions[j])
+            features.append(sep)
     
     return np.array(features)
 
@@ -53,9 +62,10 @@ def main():
         # extract initial conditions to compute features
         positions = data["positions"]
         velocities = data["velocities"]
+        masses = data["masses"]
 
         # convert physics state to a feature vector
-        features = compute_features(positions, velocities)
+        features = compute_features(positions, velocities, masses)
 
         # store feature vector for current simulation
         X.append(features)
