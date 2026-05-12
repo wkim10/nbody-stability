@@ -112,4 +112,5 @@ ax.set_title('Stability Decision Boundary\n(all other features fixed at mean)')
 ax.legend(markerscale=2)
 
 plt.tight_layout()
+plt.savefig("assets/decision_boundary.png", dpi=150, bbox_inches='tight')
 plt.show()
